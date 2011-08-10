@@ -9,7 +9,7 @@
     :copyright: (c) 2010 by Armin Ronacher.
     :license: BSD, see LICENSE for more details.
 """
-from __future__ import with_statement
+
 import os
 import re
 import sys
@@ -26,7 +26,7 @@ from werkzeug import parse_date, parse_options_header
 from werkzeug.exceptions import NotFound, BadRequest
 from werkzeug.http import parse_set_header
 from jinja2 import TemplateNotFound
-from cStringIO import StringIO
+from io import StringIO
 
 example_path = os.path.join(os.path.dirname(__file__), '..', 'examples')
 sys.path.append(os.path.join(example_path, 'flaskr'))
@@ -344,7 +344,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def expect_exception(f, *args, **kwargs):
             try:
                 f(*args, **kwargs)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 assert e.args and 'session is unavailable' in e.args[0]
             else:
                 assert False, 'expected exception'
@@ -365,7 +365,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
 
         @app.route('/test')
         def test():
-            return unicode(flask.session.permanent)
+            return str(flask.session.permanent)
 
         client = app.test_client()
         rv = client.get('/')
@@ -404,24 +404,24 @@ class BasicFunctionalityTestCase(unittest.TestCase):
 
         @app.route('/')
         def index():
-            flask.flash(u'Hello World')
-            flask.flash(u'Hello World', 'error')
-            flask.flash(flask.Markup(u'<em>Testing</em>'), 'warning')
+            flask.flash('Hello World')
+            flask.flash('Hello World', 'error')
+            flask.flash(flask.Markup('<em>Testing</em>'), 'warning')
             return ''
 
         @app.route('/test')
         def test():
             messages = flask.get_flashed_messages(with_categories=True)
             assert len(messages) == 3
-            assert messages[0] == ('message', u'Hello World')
-            assert messages[1] == ('error', u'Hello World')
-            assert messages[2] == ('warning', flask.Markup(u'<em>Testing</em>'))
+            assert messages[0] == ('message', 'Hello World')
+            assert messages[1] == ('error', 'Hello World')
+            assert messages[2] == ('warning', flask.Markup('<em>Testing</em>'))
             return ''
             messages = flask.get_flashed_messages()
             assert len(messages) == 3
-            assert messages[0] == u'Hello World'
-            assert messages[1] == u'Hello World'
-            assert messages[2] == flask.Markup(u'<em>Testing</em>')
+            assert messages[0] == 'Hello World'
+            assert messages[1] == 'Hello World'
+            assert messages[2] == flask.Markup('<em>Testing</em>')
 
         c = app.test_client()
         c.get('/')
@@ -605,7 +605,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         c = app.test_client()
         try:
             c.get('/fail')
-        except KeyError, e:
+        except KeyError as e:
             assert isinstance(e, BadRequest)
         else:
             self.fail('Expected exception')
@@ -621,7 +621,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         c = app.test_client()
         try:
             c.get('/fail')
-        except NotFound, e:
+        except NotFound as e:
             pass
         else:
             self.fail('Expected exception')
@@ -640,7 +640,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         with app.test_client() as c:
             try:
                 c.post('/fail', data={'foo': 'index.txt'})
-            except DebugFilesKeyError, e:
+            except DebugFilesKeyError as e:
                 assert 'no file contents were transmitted' in str(e)
                 assert 'This was submitted: "index.txt"' in str(e)
             else:
@@ -663,16 +663,16 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         @app.route('/unicode')
         def from_unicode():
-            return u'Hällo Wörld'
+            return 'Hällo Wörld'
         @app.route('/string')
         def from_string():
-            return u'Hällo Wörld'.encode('utf-8')
+            return 'Hällo Wörld'.encode('utf-8')
         @app.route('/args')
         def from_tuple():
             return 'Meh', 400, {'X-Foo': 'Testing'}, 'text/plain'
         c = app.test_client()
-        assert c.get('/unicode').data == u'Hällo Wörld'.encode('utf-8')
-        assert c.get('/string').data == u'Hällo Wörld'.encode('utf-8')
+        assert c.get('/unicode').data == 'Hällo Wörld'.encode('utf-8')
+        assert c.get('/string').data == 'Hällo Wörld'.encode('utf-8')
         rv = c.get('/args')
         assert rv.data == 'Meh'
         assert rv.headers['X-Foo'] == 'Testing'
@@ -739,7 +739,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             return None
         try:
             app.test_client().get('/')
-        except ValueError, e:
+        except ValueError as e:
             assert str(e) == 'View function did not return a response'
             pass
         else:
@@ -772,7 +772,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             with app.test_request_context('/', environ_overrides={'HTTP_HOST': 'localhost'}):
                 pass
-        except Exception, e:
+        except Exception as e:
             assert isinstance(e, ValueError)
             assert str(e) == "the server name provided " + \
                     "('localhost.localdomain:5000') does not match the " + \
@@ -782,7 +782,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             app.config.update(SERVER_NAME='localhost')
             with app.test_request_context('/', environ_overrides={'SERVER_NAME': 'localhost'}):
                 pass
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -791,7 +791,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             app.config.update(SERVER_NAME='localhost:80')
             with app.test_request_context('/', environ_overrides={'SERVER_NAME': 'localhost:80'}):
                 pass
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -812,7 +812,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             rv = app.test_client().get('/')
             assert rv.data == 'Foo'
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -820,7 +820,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             rv = app.test_client().get('/', 'http://localhost.localdomain:5000')
             assert rv.data == 'Foo'
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -828,7 +828,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             rv = app.test_client().get('/', 'https://localhost.localdomain:5000')
             assert rv.data == 'Foo'
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -837,7 +837,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             app.config.update(SERVER_NAME='localhost.localdomain')
             rv = app.test_client().get('/', 'https://localhost.localdomain')
             assert rv.data == 'Foo'
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -846,7 +846,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             app.config.update(SERVER_NAME='localhost.localdomain:443')
             rv = app.test_client().get('/', 'https://localhost.localdomain')
             assert rv.data == 'Foo'
-        except ValueError, e:
+        except ValueError as e:
             assert str(e) == "the server name provided " + \
                     "('localhost.localdomain:443') does not match the " + \
                     "server name from the WSGI environment ('localhost.localdomain')", str(e)
@@ -854,7 +854,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             app.config.update(SERVER_NAME='localhost.localdomain')
             app.test_client().get('/', 'http://foo.localhost')
-        except ValueError, e:
+        except ValueError as e:
             assert str(e) == "the server name provided " + \
                     "('localhost.localdomain') does not match the " + \
                     "server name from the WSGI environment ('foo.localhost')", str(e)
@@ -862,7 +862,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             rv = app.test_client().get('/', 'http://foo.localhost.localdomain')
             assert rv.data == 'Foo SubDomain'
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(
                 "No ValueError exception should have been raised \"%s\"" % e
             )
@@ -956,7 +956,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             @app.route('/foo')
             def broken():
                 return 'Meh'
-        except AssertionError, e:
+        except AssertionError as e:
             self.assert_('A setup function was called' in str(e))
         else:
             self.fail('Expected exception')
@@ -990,7 +990,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         with app.test_client() as c:
             try:
                 c.post('/foo', data={})
-            except AssertionError, e:
+            except AssertionError as e:
                 self.assert_('http://localhost/foo/' in str(e))
                 self.assert_('Make sure to directly send your POST-request '
                              'to this URL' in str(e))
@@ -1012,7 +1012,7 @@ class JSONTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         @app.route('/json', methods=['POST'])
         def return_json():
-            return unicode(flask.request.json)
+            return str(flask.request.json)
         c = app.test_client()
         rv = c.post('/json', data='malformed', content_type='application/json')
         self.assertEqual(rv.status_code, 400)
@@ -1025,9 +1025,9 @@ class JSONTestCase(unittest.TestCase):
             return flask.request.json
 
         c = app.test_client()
-        resp = c.get('/', data=u'"Hällo Wörld"'.encode('iso-8859-15'),
+        resp = c.get('/', data='"Hällo Wörld"'.encode('iso-8859-15'),
                      content_type='application/json; charset=iso-8859-15')
-        assert resp.data == u'Hällo Wörld'.encode('utf-8')
+        assert resp.data == 'Hällo Wörld'.encode('utf-8')
 
     def test_jsonify(self):
         d = dict(a=23, b=42, c=[1, 2, 3])
@@ -1048,7 +1048,7 @@ class JSONTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         @app.route('/add', methods=['POST'])
         def add():
-            return unicode(flask.request.json['a'] + flask.request.json['b'])
+            return str(flask.request.json['a'] + flask.request.json['b'])
         c = app.test_client()
         rv = c.post('/add', data=flask.json.dumps({'a': 1, 'b': 2}),
                             content_type='application/json')
@@ -1074,9 +1074,9 @@ class JSONTestCase(unittest.TestCase):
         def index():
             return flask.request.args['foo']
 
-        rv = app.test_client().get(u'/?foo=정상처리'.encode('euc-kr'))
+        rv = app.test_client().get('/?foo=정상처리'.encode('euc-kr'))
         assert rv.status_code == 200
-        assert rv.data == u'정상처리'.encode('utf-8')
+        assert rv.data == '정상처리'.encode('utf-8')
 
     if not has_encoding('euc-kr'):
         test_modified_url_encoding = None
@@ -1155,7 +1155,7 @@ class TemplatingTestCase(unittest.TestCase):
         @app.template_filter()
         def my_reverse(s):
             return s[::-1]
-        assert 'my_reverse' in  app.jinja_env.filters.keys()
+        assert 'my_reverse' in  list(app.jinja_env.filters.keys())
         assert app.jinja_env.filters['my_reverse'] == my_reverse
         assert app.jinja_env.filters['my_reverse']('abcd') == 'dcba'
 
@@ -1164,7 +1164,7 @@ class TemplatingTestCase(unittest.TestCase):
         @app.template_filter('strrev')
         def my_reverse(s):
             return s[::-1]
-        assert 'strrev' in  app.jinja_env.filters.keys()
+        assert 'strrev' in  list(app.jinja_env.filters.keys())
         assert app.jinja_env.filters['strrev'] == my_reverse
         assert app.jinja_env.filters['strrev']('abcd') == 'dcba'
 
@@ -1360,7 +1360,7 @@ class ModuleTestCase(unittest.TestCase):
         with app.test_request_context():
             try:
                 flask.render_template('missing.html')
-            except TemplateNotFound, e:
+            except TemplateNotFound as e:
                 assert e.name == 'missing.html'
             else:
                 assert 0, 'expected exception'
@@ -1481,17 +1481,17 @@ class BlueprintTestCase(unittest.TestCase):
 
         @bp.route('/bar')
         def bar(bar):
-            return unicode(bar)
+            return str(bar)
 
         app = flask.Flask(__name__)
         app.register_blueprint(bp, url_prefix='/1', url_defaults={'bar': 23})
         app.register_blueprint(bp, url_prefix='/2', url_defaults={'bar': 19})
 
         c = app.test_client()
-        self.assertEqual(c.get('/1/foo').data, u'23/42')
-        self.assertEqual(c.get('/2/foo').data, u'19/42')
-        self.assertEqual(c.get('/1/bar').data, u'23')
-        self.assertEqual(c.get('/2/bar').data, u'19')
+        self.assertEqual(c.get('/1/foo').data, '23/42')
+        self.assertEqual(c.get('/2/foo').data, '19/42')
+        self.assertEqual(c.get('/1/bar').data, '23')
+        self.assertEqual(c.get('/2/bar').data, '19')
 
     def test_blueprint_url_processors(self):
         bp = flask.Blueprint('frontend', __name__, url_prefix='/<lang_code>')
@@ -1542,7 +1542,7 @@ class BlueprintTestCase(unittest.TestCase):
         with app.test_request_context():
             try:
                 flask.render_template('missing.html')
-            except TemplateNotFound, e:
+            except TemplateNotFound as e:
                 assert e.name == 'missing.html'
             else:
                 assert 0, 'expected exception'
@@ -1815,7 +1815,7 @@ class ConfigTestCase(unittest.TestCase):
             app = flask.Flask(__name__)
             try:
                 app.config.from_envvar('FOO_SETTINGS')
-            except RuntimeError, e:
+            except RuntimeError as e:
                 assert "'FOO_SETTINGS' is not set" in str(e)
             else:
                 assert 0, 'expected exception'
@@ -1831,7 +1831,7 @@ class ConfigTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         try:
             app.config.from_pyfile('missing.cfg')
-        except IOError, e:
+        except IOError as e:
             msg = str(e)
             assert msg.startswith('[Errno 2] Unable to load configuration '
                                   'file (No such file or directory):')
